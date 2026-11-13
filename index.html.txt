@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IPL Enterprise Analytics Dashboard</title>
+  <!-- Tailwind CSS & Chart.js -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-6">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-800 pb-4 gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
+          🏏 IPL Enterprise Analytics Dashboard
+        </h1>
+        <p class="text-sm text-slate-400 mt-1">Multi-dimensional filtering suite powered by Supabase & Vercel.</p>
+      </div>
+      <button onclick="resetAllFilters()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-xl transition shadow-lg text-sm">
+        🔄 Reset All Filters
+      </button>
+    </header>
+
+    <!-- Filter Control Bar -->
+    <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl mb-8 shadow-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Season</label>
+        <select id="filterSeason" onchange="fetchFilteredData()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          <option value="ALL">All Seasons</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">City</label>
+        <select id="filterCity" onchange="fetchFilteredData()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          <option value="ALL">All Cities</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Venue</label>
+        <select id="filterVenue" onchange="fetchFilteredData()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          <option value="ALL">All Venues</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Team</label>
+        <select id="filterTeam" onchange="fetchFilteredData()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          <option value="ALL">All Teams</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Toss Winner</label>
+        <select id="filterTossWinner" onchange="fetchFilteredData()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          <option value="ALL">All Toss Winners</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Toss Decision</label>
+        <select id="filterTossDecision" onchange="fetchFilteredData()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          <option value="ALL">All Decisions</option>
+          <option value="bat">Bat First</option>
+          <option value="field">Field First</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Match Winner</label>
+        <select id="filterWinner" onchange="fetchFilteredData()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          <option value="ALL">All Winners</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Start Date</label>
+        <input type="date" id="filterStartDate" onchange="fetchFilteredData()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" />
+      </div>
+    </div>
+
+    <!-- KPI Grid Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
+        <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Filtered Matches</p>
+        <p id="kpiMatches" class="text-3xl font-extrabold text-white mt-2">-</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
+        <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Top Victor</p>
+        <p id="kpiTopTeam" class="text-lg font-bold text-emerald-400 mt-2 truncate">-</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
+        <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Top Man of Match</p>
+        <p id="kpiTopPOM" class="text-lg font-bold text-amber-400 mt-2 truncate">-</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
+        <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Toss Decision Ratio</p>
+        <p id="kpiTossPref" class="text-lg font-bold text-indigo-400 mt-2 truncate">-</p>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+      <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+        <h3 class="text-base font-bold text-slate-200 mb-4">📊 Team Victory Distribution</h3>
+        <div class="relative h-72 w-full"><canvas id="winsChart"></canvas></div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+        <h3 class="text-base font-bold text-slate-200 mb-4">🪙 Toss Choice Split</h3>
+        <div class="relative h-72 w-full flex items-center justify-center"><canvas id="tossChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Table Explorer -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden mb-12">
+      <div class="p-6 border-b border-slate-800 flex justify-between items-center">
+        <h3 class="text-base font-bold text-slate-200">📋 Filtered Match Records</h3>
+        <span id="tableCountBadge" class="text-xs text-slate-400 bg-slate-800 px-3 py-1 rounded-full">0 displayed</span>
+      </div>
+      <div class="overflow-x-auto max-h-96">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead class="sticky top-0 bg-slate-800 text-slate-400 uppercase text-xs tracking-wider z-10">
+            <tr>
+              <th class="p-4">Date</th>
+              <th class="p-4">Season</th>
+              <th class="p-4">Venue</th>
+              <th class="p-4">Teams</th>
+              <th class="p-4">Toss</th>
+              <th class="p-4">Winner</th>
+              <th class="p-4">Player of Match</th>
+            </tr>
+          </thead>
+          <tbody id="matchTableBody" class="divide-y divide-slate-800 text-slate-300">
+            <tr><td colspan="7" class="p-6 text-center text-slate-500">Connecting to Supabase...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // PASTE YOUR SUPABASE CREDENTIALS HERE:
+    const SUPABASE_URL = 'https://tyvrwiwowtgcspdkvuvr.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_BYympdikFtU1Y8kzmFbWAA__Gs-pmDe';
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let winsChartInstance = null;
+    let tossChartInstance = null;
+
+    window.onload = async function() {
+      await loadFilterOptions();
+      fetchFilteredData();
+    };
+
+    async function loadFilterOptions() {
+      const { data, error } = await supabaseClient.from('ipl_matches').select('*');
+      if (error) { console.error(error); return; }
+
+      const seasons = [...new Set(data.map(d => d.season))].filter(Boolean).sort();
+      const cities = [...new Set(data.map(d => d.city))].filter(Boolean).sort();
+      const venues = [...new Set(data.map(d => d.venue))].filter(Boolean).sort();
+      const teams = [...new Set([...data.map(d => d.team1), ...data.map(d => d.team2)])].filter(Boolean).sort();
+      const tossWinners = [...new Set(data.map(d => d.toss_winner))].filter(Boolean).sort();
+      const winners = [...new Set(data.map(d => d.winner))].filter(Boolean).sort();
+
+      populateDropdown('filterSeason', seasons);
+      populateDropdown('filterCity', cities);
+      populateDropdown('filterVenue', venues);
+      populateDropdown('filterTeam', teams);
+      populateDropdown('filterTossWinner', tossWinners);
+      populateDropdown('filterWinner', winners);
+    }
+
+    function populateDropdown(id, items) {
+      const select = document.getElementById(id);
+      items.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item;
+        opt.innerText = item;
+        select.appendChild(opt);
+      });
+    }
+
+    function resetAllFilters() {
+      ['filterSeason', 'filterCity', 'filterVenue', 'filterTeam', 'filterTossWinner', 'filterTossDecision', 'filterWinner', 'filterStartDate'].forEach(id => {
+        document.getElementById(id).value = id.includes('Date') ? '' : 'ALL';
+      });
+      fetchFilteredData();
+    }
+
+    async function fetchFilteredData() {
+      let query = supabaseClient.from('ipl_matches').select('*');
+
+      const season = document.getElementById('filterSeason').value;
+      const city = document.getElementById('filterCity').value;
+      const venue = document.getElementById('filterVenue').value;
+      const team = document.getElementById('filterTeam').value;
+      const tossWinner = document.getElementById('filterTossWinner').value;
+      const tossDecision = document.getElementById('filterTossDecision').value;
+      const winner = document.getElementById('filterWinner').value;
+      const startDate = document.getElementById('filterStartDate').value;
+
+      if (season !== 'ALL') query = query.eq('season', season);
+      if (city !== 'ALL') query = query.eq('city', city);
+      if (venue !== 'ALL') query = query.eq('venue', venue);
+      if (team !== 'ALL') query = query.or(`team1.eq.${team},team2.eq.${team}`);
+      if (tossWinner !== 'ALL') query = query.eq('toss_winner', tossWinner);
+      if (tossDecision !== 'ALL') query = query.ilike('toss_decision', `%${tossDecision}%`);
+      if (winner !== 'ALL') query = query.eq('winner', winner);
+      if (startDate) query = query.gte('date', startDate);
+
+      const { data, error } = await query;
+      if (error) { alert('Error fetching data: ' + error.message); return; }
+
+      processDashboardData(data);
+    }
+
+    function processDashboardData(rows) {
+      document.getElementById('kpiMatches').innerText = rows.length;
+      document.getElementById('tableCountBadge').innerText = `${rows.length} displayed`;
+
+      let teamWins = {};
+      let pomCounts = {};
+      let tossBat = 0, tossField = 0;
+
+      rows.forEach(r => {
+        if (r.winner && r.winner !== 'NA') {
+          teamWins[r.winner] = (teamWins[r.winner] || 0) + 1;
+        }
+        if (r.player_of_match && r.player_of_match !== 'NA') {
+          pomCounts[r.player_of_match] = (pomCounts[r.player_of_match] || 0) + 1;
+        }
+        if (r.toss_decision && r.toss_decision.toLowerCase().includes('bat')) tossBat++;
+        if (r.toss_decision && r.toss_decision.toLowerCase().includes('field')) tossField++;
+      });
+
+      const topTeam = Object.keys(teamWins).length > 0 ? Object.keys(teamWins).reduce((a, b) => teamWins[a] > teamWins[b] ? a : b) : 'N/A';
+      const topPOM = Object.keys(pomCounts).length > 0 ? Object.keys(pomCounts).reduce((a, b) => pomCounts[a] > pomCounts[b] ? a : b) : 'N/A';
+
+      document.getElementById('kpiTopTeam').innerText = `${topTeam} (${teamWins[topTeam] || 0})`;
+      document.getElementById('kpiTopPOM').innerText = `${topPOM} (${pomCounts[topPOM] || 0})`;
+      
+      const totalToss = tossBat + tossField;
+      const fieldPct = totalToss > 0 ? Math.round((tossField / totalToss) * 100) : 0;
+      document.getElementById('kpiTossPref').innerText = `Field first (${fieldPct}%)`;
+
+      renderWinsChart(teamWins);
+      renderTossChart(tossBat, tossField);
+      renderTable(rows.slice(0, 100));
+    }
+
+    function renderWinsChart(distribution) {
+      const ctx = document.getElementById('winsChart').getContext('2d');
+      if (winsChartInstance) winsChartInstance.destroy();
+
+      winsChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(distribution),
+          datasets: [{ data: Object.values(distribution), backgroundColor: '#6366f1', borderRadius: 6 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+          }
+        }
+      });
+    }
+
+    function renderTossChart(bat, field) {
+      const ctx = document.getElementById('tossChart').getContext('2d');
+      if (tossChartInstance) tossChartInstance.destroy();
+
+      tossChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Bat First', 'Field First'],
+          datasets: [{ data: [bat, field], backgroundColor: ['#f59e0b', '#3b82f6'], borderWidth: 0 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } }
+        }
+      });
+    }
+
+    function renderTable(matches) {
+      const tbody = document.getElementById('matchTableBody');
+      tbody.innerHTML = '';
+
+      if (matches.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">No records found.</td></tr>`;
+        return;
+      }
+
+      matches.forEach(m => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/40 transition';
+        tr.innerHTML = `
+          <td class="p-4 text-slate-400 text-xs">${m.date || ''}</td>
+          <td class="p-4 text-xs"><span class="bg-slate-800 text-slate-300 px-2 py-1 rounded">${m.season || ''}</span></td>
+          <td class="p-4 text-slate-300 text-xs truncate max-w-xs">${m.venue || ''}</td>
+          <td class="p-4 font-medium text-white">${m.team1} vs ${m.team2}</td>
+          <td class="p-4 text-xs text-indigo-300">Won toss (${m.toss_decision || ''})</td>
+          <td class="p-4 text-emerald-400 font-semibold">${m.winner || 'N/A'}</td>
+          <td class="p-4 text-amber-300 text-xs">${m.player_of_match || 'N/A'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
